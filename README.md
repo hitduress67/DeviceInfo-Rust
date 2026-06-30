@@ -23,4 +23,4 @@ cargo apk build --release
 
 ## APK Download
 
-See [Releases](https://github.com/hitduress67/DeviceInfo/releases) for the latest Rust-native APK.
+See [Releases](https://github.com/hitduress67/DeviceInfo-Rust/releases) for the latest Rust-native APK.
