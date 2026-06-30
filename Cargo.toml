@@ -13,6 +13,8 @@ android-activity = { version = "0.6", features = ["native-activity"] }
 jni = { version = "0.21", features = ["invocation"] }
 log = "0.4"
 android_logger = "0.13"
+ndk = "0.9"
+ndk-sys = "0.6"
 
 [profile.release]
 opt-level = "z"
