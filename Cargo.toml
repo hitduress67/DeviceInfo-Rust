@@ -1,0 +1,22 @@
+[package]
+name = "sysinfo-dashboard"
+version = "0.1.0"
+edition = "2021"
+description = "SysInfo Dashboard - Rust native Android diagnostics app"
+
+[lib]
+name = "sysinfo_dashboard"
+crate-type = ["cdylib"]
+
+[dependencies]
+android-activity = { version = "0.6", features = ["native-activity"] }
+jni = { version = "0.21", features = ["invocation"] }
+log = "0.4"
+android_logger = "0.13"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

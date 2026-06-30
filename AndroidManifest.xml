@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.deviceinfo.dashboard.rust">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.READ_BASIC_PHONE_STATE" />
+
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
+
+    <application
+        android:label="SysInfo Dashboard"
+        android:hasCode="false"
+        android:debuggable="false">
+
+        <activity
+            android:name="android.app.NativeActivity"
+            android:label="SysInfo Dashboard"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="sysinfo_dashboard" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
