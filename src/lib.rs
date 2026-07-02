@@ -18,6 +18,14 @@ extern "C" {
 
 #[repr(C)]
 struct ANativeWindowBuffer {
+    width: i32,
+    height: i32,
+    stride: i32,
+    format: i32,
+    usage: i64,
+    bits: *mut u8,
+    reserved: [u8; 6],
+}
 
 #[no_mangle]
 pub extern "C" fn ANativeActivity_onCreate(
