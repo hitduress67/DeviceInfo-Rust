@@ -24,7 +24,7 @@ pub extern "C" fn ANativeActivity_onCreate(
     }
 
     // Create NativeActivity wrapper
-    let na = unsafe { NativeActivity::new(activity as *mut ndk_sys::ANativeActivity) };
+    let na = unsafe { NativeActivity::from_raw(activity as *mut ndk_sys::ANativeActivity) };
 
     // Poll for window (up to 5 seconds)
     for attempt in 0..50 {
