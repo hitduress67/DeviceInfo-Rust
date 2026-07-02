@@ -66,6 +66,7 @@ jobs:
 
       - name: Create Pre-release
         if: startsWith(github.ref, 'refs/tags/rust-v')
+        working-directory: sysinfo-dashboard
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
