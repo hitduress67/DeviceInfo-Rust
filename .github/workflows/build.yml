@@ -39,7 +39,12 @@ jobs:
 
       - name: Build APK
         working-directory: sysinfo-dashboard
-        run: cargo apk build --release
+        run: |
+          keytool -genkey -v -keystore /tmp/release.keystore \
+            -alias release -keyalg RSA -keysize 2048 -validity 36500 \
+            -storepass android -keypass android \
+            -dname "CN=SysInfo Dashboard, O=hitduress67, C=US"
+          cargo apk build --release
 
       - name: Locate APK
         run: |

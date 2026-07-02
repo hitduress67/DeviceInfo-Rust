@@ -18,3 +18,9 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
+
+[package.metadata.android.signing.release]
+path = "/tmp/release.keystore"
+keystore_password = "android"
+alias = "release"
+password = "android"
