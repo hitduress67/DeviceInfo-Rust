@@ -78,8 +78,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh release delete "${{ github.ref_name }}" --yes 2>/dev/null || true
           gh release create "${{ github.ref_name }}" \
             --title "SysInfo Dashboard Rust v${{ github.ref_name }}" \
-            --notes "Rust-native Android diagnostics app. Built with cargo-apk. Features: device info, CPU, RAM, storage, network, local + public IP, uptime." \
-            --prerelease --overwrite \
+            --notes "Rust-native Android diagnostics app. Features: device info, CPU, RAM, storage, network, local + public IP, uptime." \
+            --prerelease \
             /tmp/sysinfo-dashboard-rust.apk
