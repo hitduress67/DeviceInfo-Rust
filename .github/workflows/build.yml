@@ -48,13 +48,19 @@ jobs:
 
       - name: Locate APK
         run: |
-          APK=$(find sysinfo-dashboard/target -name "*.apk" -type f | grep -v unaligned | head -1)
-          if [ -n "$APK" ]; then
-            cp "$APK" /tmp/sysinfo-dashboard-rust.apk
-            echo "APK copied: $(ls -lh /tmp/sysinfo-dashboard-rust.apk | awk '{print $5}')"
+          mkdir -p /tmp/apk
+          find . -path "*/target/release/apk/*.apk" -type f 2>/dev/null | head -5
+          cp $(find . -path "*/target/release/apk/*.apk" -type f | grep -v unaligned | head -1) /tmp/sysinfo-dashboard-rust.apk || true
+          if [ -f /tmp/sysinfo-dashboard-rust.apk ]; then
+            echo "APK: $(ls -lh /tmp/sysinfo-dashboard-rust.apk | awk '{print $5}')"
           else
-            echo "No APK found"
-            exit 1
+            # Try broader search
+            find /home/runner/work -name "*.apk" -type f 2>/dev/null | head -5
+            cp $(find /home/runner/work -name "*.apk" -type f | grep -v unaligned | head -1) /tmp/sysinfo-dashboard-rust.apk || true
+            if [ ! -f /tmp/sysinfo-dashboard-rust.apk ]; then
+              echo "No APK found"
+              exit 1
+            fi
           fi
 
       - name: Upload APK (artifact)
