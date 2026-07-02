@@ -48,13 +48,10 @@ jobs:
 
       - name: Locate APK
         run: |
-          echo "Looking for APK..."
-          find sysinfo-dashboard/target -name "*.apk" -type f 2>/dev/null | head -5
-          APK=$(find sysinfo-dashboard/target -name "*.apk" -type f 2>/dev/null | head -1)
+          APK=$(find sysinfo-dashboard/target -name "*.apk" -type f | grep -v unaligned | head -1)
           if [ -n "$APK" ]; then
-            echo "Found: $APK ($(ls -lh $APK | awk '{print $5}'))"
             cp "$APK" /tmp/sysinfo-dashboard-rust.apk
-            echo "APK_PATH=/tmp/sysinfo-dashboard-rust.apk" >> $GITHUB_ENV
+            echo "APK copied: $(ls -lh /tmp/sysinfo-dashboard-rust.apk | awk '{print $5}')"
           else
             echo "No APK found"
             exit 1
