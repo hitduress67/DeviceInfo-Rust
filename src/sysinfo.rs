@@ -81,8 +81,8 @@ fn count_cpu_cores() -> String {
     let count = fs::read_dir("/sys/devices/system/cpu")
         .map(|e| e.filter_map(|e| e.ok())
             .filter(|e| {
-                let n = e.file_name().to_string_lossy();
-                n.starts_with("cpu") && n.len() > 3 && n[3..].chars().all(|c| c.is_ascii_digit())
+                let name = e.file_name().to_string_lossy().to_string();
+                name.starts_with("cpu") && name.len() > 3 && name[3..].chars().all(|c| c.is_ascii_digit())
             })
             .count())
         .unwrap_or(0);
