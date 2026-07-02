@@ -1,11 +1,8 @@
 use log::info;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use ndk::native_activity::NativeActivity;
+use ndk::native_window::NativeWindow;
 
 mod sysinfo;
-
-static WINDOW: std::sync::Mutex<*mut std::ffi::c_void> = std::sync::Mutex::new(std::ptr::null_mut());
-static RUNNING: AtomicBool = AtomicBool::new(true);
 
 #[no_mangle]
 pub extern "C" fn ANativeActivity_onCreate(
@@ -21,121 +18,98 @@ pub extern "C" fn ANativeActivity_onCreate(
 
     info!("SysInfo Dashboard Rust v0.2.0 starting");
 
-    // Collect system info
     let lines = sysinfo::collect_system_info();
     for l in &lines {
         info!("{}", l);
     }
 
-    // Store the activity pointer and set up a simple callback
-    // We use the native_app_glue style by storing the ANativeActivity pointer
-    // and reading its `window` field to know when a window is available
+    // Create NativeActivity wrapper
+    let na = unsafe { NativeActivity::new(activity as *mut ndk_sys::ANativeActivity) };
 
-    // Spawn a render thread
-    let activity_ptr = activity as usize;
-    std::thread::spawn(move || {
-        info!("Render thread started");
-        let mut rendered = false;
-
-        while RUNNING.load(Ordering::Relaxed) {
-            unsafe {
-                let activity = activity_ptr as *mut ndk_sys::ANativeActivity;
-                if activity.is_null() {
-                    std::thread::sleep(std::time::Duration::from_millis(100));
-                    continue;
-                }
-
-                let window = (*activity).window;
-                if window.is_null() {
-                    std::thread::sleep(std::time::Duration::from_millis(100));
-                    continue;
-                }
-
-                if !rendered {
-                    info!("Window available, rendering...");
-                    render_text(window, &lines);
-                    rendered = true;
-                }
-
-                // Check if window was destroyed
-                if (*activity).destroyRequested != 0 {
-                    info!("Destroy requested");
-                    break;
-                }
-            }
-            std::thread::sleep(std::time::Duration::from_millis(500));
+    // Poll for window (up to 5 seconds)
+    for attempt in 0..50 {
+        if let Some(window) = na.window() {
+            info!("Window available after {}ms", attempt * 100);
+            render_to_window(&window, &lines);
+            break;
         }
-        info!("Render thread exiting");
-    });
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+
+    // Keep alive so the activity doesn't exit
+    info!("Render complete, staying alive");
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(60));
+    }
 }
 
-unsafe fn render_text(window: *mut ndk_sys::ANativeWindow, lines: &[String]) {
-    let mut buf = std::mem::MaybeUninit::<ndk_sys::ANativeWindow_Buffer>::uninit();
-    let ret = ndk_sys::ANativeWindow_lock(window, buf.as_mut_ptr(), std::ptr::null_mut());
-    if ret != 0 {
-        info!("lock failed: {}", ret);
-        return;
-    }
-
-    let b = buf.assume_init();
-    let w = b.width as usize;
-    let h = b.height as usize;
-    let stride = b.stride as usize;
-    let pixels = b.bits as *mut u32;
-
-    // Fill dark background
-    for y in 0..h {
-        for x in 0..w {
-            *pixels.add(y * stride + x) = 0xFF121212u32;
+fn render_to_window(window: &NativeWindow, lines: &[String]) {
+    unsafe {
+        let raw = window as *const _ as *mut ndk_sys::ANativeWindow;
+        let mut buf = std::mem::MaybeUninit::<ndk_sys::ANativeWindow_Buffer>::uninit();
+        let ret = ndk_sys::ANativeWindow_lock(raw, buf.as_mut_ptr(), std::ptr::null_mut());
+        if ret != 0 {
+            info!("ANativeWindow_lock failed: {}", ret);
+            return;
         }
-    }
 
-    // Draw title
-    let title = "SysInfo Dashboard v0.2.0";
-    let tw = title.len() * 12;
-    let tx = (w.saturating_sub(tw)) / 2;
-    draw_text_simple(pixels, w, h, stride, title, tx, 16, 0xFF90CAF9u32);
+        let b = buf.assume_init();
+        let w = b.width as usize;
+        let h = b.height as usize;
+        let stride = b.stride as usize;
+        let pixels = b.bits as *mut u32;
 
-    // Draw info lines
-    let mut row = 50;
-    for line in lines {
-        if row + 18 > h { break; }
-        let color = if line.starts_with("--") { 0xFF90CAF9u32 }
+        // Dark background
+        for y in 0..h {
+            for x in 0..w {
+                *pixels.add(y * stride + x) = 0xFF121212u32;
+            }
+        }
+
+        // Title
+        draw_block_text(pixels, w, h, stride, "SysInfo Dashboard v0.2.0",
+            (w / 2).saturating_sub(13 * 10), 16, 0xFF90CAF9u32);
+
+        // Info lines
+        let mut row = 50;
+        let mut i = 0;
+        while row + 16 < h && i < lines.len() {
+            let line = &lines[i];
+            if !line.is_empty() {
+                let color = if line.starts_with("--") { 0xFF90CAF9u32 }
                     else if line.starts_with("  ") { 0xFFFFFFFFu32 }
                     else { 0xFF80FFFFFFu32 };
-        draw_text_simple(pixels, w, h, stride, line, 12, row, color);
-        row += if line.is_empty() { 10 } else { 18 };
+                draw_block_text(pixels, w, h, stride, line, 12, row, color);
+                row += 18;
+            } else {
+                row += 10;
+            }
+            i += 1;
+        }
+
+        // Footer
+        draw_block_text(pixels, w, h, stride, "Rust Native v0.2.0",
+            w.saturating_sub(18 * 10), h.saturating_sub(24), 0xFF40FFFFFFu32);
+
+        ndk_sys::ANativeWindow_unlockAndPost(raw);
+        info!("Rendered OK ({}x{}, {} lines)", w, h, lines.len());
     }
-
-    // Footer
-    let footer = "Rust Native";
-    let fw = footer.len() * 12;
-    draw_text_simple(pixels, w, h, stride, footer, w.saturating_sub(fw) - 12, h - 24, 0xFF40FFFFFFu32);
-
-    ndk_sys::ANativeWindow_unlockAndPost(window);
-    info!("Rendered {} lines", lines.len());
 }
 
-fn draw_text_simple(pixels: *mut u32, w: usize, h: usize, stride: usize,
-                    text: &str, x: usize, y: usize, color: u32) {
-    unsafe {
-        let mut cx = x;
-        for ch in text.chars() {
-            if ch < ' ' { continue; }
-            let bw = 8usize;
-            let bh = 14usize;
-            // Draw a colored block for each character (placeholder rendering)
-            for dy in 0..bh {
-                for dx in 0..bw {
-                    let px = cx + dx;
-                    let py = y + dy;
-                    if px < w && py < h {
-                        *pixels.add(py * stride + px) = color;
-                    }
+fn draw_block_text(pixels: *mut u32, w: usize, h: usize, stride: usize,
+                   text: &str, mut cx: usize, y: usize, color: u32) {
+    for ch in text.chars() {
+        if ch < ' ' { continue; }
+        for dy in 0..14 {
+            for dx in 0..8 {
+                let px = cx + dx;
+                let py = y + dy;
+                if px < w && py < h {
+                    unsafe { *pixels.add(py * stride + px) = color; }
                 }
             }
-            cx += bw + 2;
-            if cx + bw > w { break; }
         }
+        cx += 10;
+        if cx + 8 > w { break; }
     }
 }
