@@ -64,14 +64,18 @@ pub extern "C" fn ANativeActivity_onCreate(
         (*act).callbacks = callbacks as *mut _;
     }
 
-    // Wait for window and render
-    for _ in 0..100 {
-        if let Some(win_ptr) = *WINDOW_PTR.lock().unwrap() {
-            render_all(win_ptr.0, &lines);
-            break;
+    // Spawn a thread to wait for the window and render
+    let lines_clone = lines.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        for _ in 0..100 {
+            if let Some(win_ptr) = WINDOW_PTR.lock().unwrap().take() {
+                render_all(win_ptr.0, &lines_clone);
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
         }
-        std::thread::sleep(std::time::Duration::from_millis(50));
-    }
+    });
 
     // Keep alive
     loop {
