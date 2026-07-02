@@ -3,7 +3,13 @@ use std::sync::Mutex;
 
 mod sysinfo;
 
-// Raw FFI to libandroid.so (linked automatically by cargo-apk)
+// Raw pointer wrapper that implements Send/Sync
+struct WindowPtr(*mut std::ffi::c_void);
+unsafe impl Send for WindowPtr {}
+unsafe impl Sync for WindowPtr {}
+
+static WINDOW_PTR: Mutex<Option<WindowPtr>> = Mutex::new(None);
+
 extern "C" {
     fn ANativeWindow_lock(window: *mut std::ffi::c_void,
         out_buffer: *mut ANativeWindowBuffer, inout_dirty: *const std::ffi::c_void) -> i32;
@@ -12,16 +18,6 @@ extern "C" {
 
 #[repr(C)]
 struct ANativeWindowBuffer {
-    width: i32,
-    height: i32,
-    stride: i32,
-    format: i32,
-    usage: i64,
-    bits: *mut u8,
-    reserved: [u8; 6],
-}
-
-static WINDOW_PTR: Mutex<Option<*mut std::ffi::c_void>> = Mutex::new(None);
 
 #[no_mangle]
 pub extern "C" fn ANativeActivity_onCreate(
@@ -62,8 +58,8 @@ pub extern "C" fn ANativeActivity_onCreate(
 
     // Wait for window and render
     for _ in 0..100 {
-        if let Some(win) = *WINDOW_PTR.lock().unwrap() {
-            render_all(win, &lines);
+        if let Some(win_ptr) = *WINDOW_PTR.lock().unwrap() {
+            render_all(win_ptr.0, &lines);
             break;
         }
         std::thread::sleep(std::time::Duration::from_millis(50));
@@ -100,13 +96,13 @@ struct ANativeActivityCallbacks {
 }
 
 unsafe extern "C" fn on_window_created(_act: *mut ANativeActivity, window: *mut std::ffi::c_void) {
-    info!("Window created: {:?}", window);
-    *WINDOW_PTR.lock().unwrap() = Some(window);
+    info!("Window created");
+    *WINDOW_PTR.lock().unwrap() = Some(WindowPtr(window));
 }
 
 unsafe extern "C" fn on_window_resized(_act: *mut ANativeActivity, window: *mut std::ffi::c_void) {
     info!("Window resized");
-    *WINDOW_PTR.lock().unwrap() = Some(window);
+    *WINDOW_PTR.lock().unwrap() = Some(WindowPtr(window));
 }
 
 unsafe extern "C" fn on_window_redraw(_act: *mut ANativeActivity, window: *mut std::ffi::c_void) {
