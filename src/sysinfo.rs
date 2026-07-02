@@ -143,14 +143,14 @@ fn read_local_ip() -> String {
 }
 
 fn read_public_ip() -> String {
-    for host in &["api.ipify.org:80", "icanhazip.com:80"] {
-        let addr = match host.parse() {
+    for host_str in &["api.ipify.org:80", "icanhazip.com:80"] {
+        let addr: std::net::SocketAddr = match host_str.parse() {
             Ok(a) => a,
             Err(_) => continue,
         };
         if let Ok(mut stream) = TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(3)) {
-            let req = format!("GET / HTTP/1.0\r\nHost: {}\r\nConnection: close\r\n\r\n",
-                host.trim_end_matches(":80"));
+            let host = host_str.trim_end_matches(":80");
+            let req = format!("GET / HTTP/1.0\r\nHost: {}\r\nConnection: close\r\n\r\n", host);
             let _ = std::io::Write::write_all(&mut stream, req.as_bytes());
             let mut response = String::new();
             if stream.read_to_string(&mut response).is_ok() {
