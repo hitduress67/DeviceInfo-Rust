@@ -1,6 +1,6 @@
 [package]
 name = "sysinfo-dashboard"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "SysInfo Dashboard - Rust native Android diagnostics app"
 
@@ -11,6 +11,8 @@ crate-type = ["cdylib"]
 [dependencies]
 log = "0.4"
 android_logger = "0.13"
+ndk = "0.9"
+ndk-sys = "0.6"
 
 [profile.release]
 opt-level = "z"

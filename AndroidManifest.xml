@@ -8,12 +8,14 @@
 
     <application
         android:label="SysInfo Dashboard"
+        android:icon="@mipmap/ic_launcher"
         android:hasCode="false"
         android:debuggable="false">
 
         <activity
             android:name="android.app.NativeActivity"
             android:label="SysInfo Dashboard"
+            android:icon="@mipmap/ic_launcher"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:exported="true">
             <meta-data
