@@ -9,7 +9,6 @@ name = "sysinfo_dashboard"
 crate-type = ["cdylib"]
 
 [dependencies]
-android-activity = { version = "0.6", features = ["native-activity"] }
 jni = { version = "0.21", features = ["invocation"] }
 log = "0.4"
 android_logger = "0.13"

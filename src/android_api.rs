@@ -1,14 +1,13 @@
-use android_activity::AndroidApp;
 use jni::objects::{JObject, JString, JValue};
 use jni::JNIEnv;
-use ndk_sys::ANativeActivity;
+use ndk::native_activity::NativeActivity;
 use std::io::Read;
 use std::net::TcpStream;
 
-pub fn collect_system_info(app: &AndroidApp) -> Vec<String> {
+pub fn collect_system_info(na: &NativeActivity) -> Vec<String> {
     let mut lines = Vec::new();
     
-    let vm = app.vm();
+    let vm = na.vm();
     let mut env = match vm.attach_current_thread() {
         Ok(e) => e,
         Err(_) => {
