@@ -41,30 +41,34 @@ jobs:
         working-directory: sysinfo-dashboard
         run: cargo apk build --release
 
-      - name: Sign APK
+      - name: Locate APK
         run: |
-          keytool -genkey -v -keystore /tmp/release.keystore \
-            -alias release -keyalg RSA -keysize 2048 -validity 36500 \
-            -storepass android -keypass android \
-            -dname "CN=SysInfo Dashboard, O=hitduress67, C=US"
-          HASH=$(ls sysinfo-dashboard/target/release/apk/ | head -1)
-          cp sysinfo-dashboard/target/release/apk/$HASH/sysinfo-dashboard.apk /tmp/unsigned.apk 2>/dev/null || \
-          cp sysinfo-dashboard/target/release/apk/sysinfo-dashboard.apk /tmp/unsigned.apk 2>/dev/null || true
-          ls -la sysinfo-dashboard/target/release/apk/
+          echo "Looking for APK..."
+          find sysinfo-dashboard/target -name "*.apk" -type f 2>/dev/null | head -5
+          APK=$(find sysinfo-dashboard/target -name "*.apk" -type f 2>/dev/null | head -1)
+          if [ -n "$APK" ]; then
+            echo "Found: $APK ($(ls -lh $APK | awk '{print $5}'))"
+            cp "$APK" /tmp/sysinfo-dashboard-rust.apk
+            echo "APK_PATH=/tmp/sysinfo-dashboard-rust.apk" >> $GITHUB_ENV
+          else
+            echo "No APK found"
+            exit 1
+          fi
 
-      - name: Upload APK (debug CI artifact)
+      - name: Upload APK (artifact)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sysinfo-dashboard-rust.apk
-          path: sysinfo-dashboard/target/release/apk/**/*.apk
+          path: /tmp/sysinfo-dashboard-rust.apk
 
-      - name: Create Release
+      - name: Create Pre-release
         if: startsWith(github.ref, 'refs/tags/rust-v')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ github.ref_name }}" \
             --title "SysInfo Dashboard Rust v${{ github.ref_name }}" \
-            --notes "Rust-native Android diagnostics app. Built with cargo-apk + NativeActivity." \
+            --notes "Rust-native Android diagnostics app. Built with cargo-apk + NativeActivity. No Java UI - pixel buffer rendering. Features: device info, CPU, RAM, storage, battery, network, local + public IP." \
             --prerelease \
-            sysinfo-dashboard/target/release/apk/**/*.apk
+            /tmp/sysinfo-dashboard-rust.apk
