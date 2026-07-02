@@ -166,7 +166,7 @@ fn render_all(window: *mut std::ffi::c_void, lines: &[String]) {
             }
             let color = if l.starts_with("--") { 0xFF90CAF9 }
                         else if l.starts_with("  ") { 0xFFFFFFFF }
-                        else { 0xFF80FFFFFF };
+                        else { 0x80FFFFFFu32 };
             draw_block(pixels, w, h, stride, l, &mut row, color);
         }
         ANativeWindow_unlockAndPost(window);
